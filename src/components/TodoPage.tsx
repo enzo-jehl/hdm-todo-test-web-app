@@ -2,28 +2,42 @@
  * @todo YOU HAVE TO IMPLEMENT THE DELETE AND SAVE TASK ENDPOINT, A TASK CANNOT BE UPDATED IF THE TASK NAME DID NOT CHANGE, YOU'VE TO CONTROL THE BUTTON STATE ACCORDINGLY
  */
 import { Check, Delete } from '@mui/icons-material';
-import { Box, Button, Container, IconButton, TextField, Typography } from '@mui/material';
+import {
+  Box, Button, Container, IconButton, TextField, Typography,
+} from '@mui/material';
 import { useEffect, useState } from 'react';
 import useFetch from '../hooks/useFetch.ts';
 import { Task } from '../index';
 
 const TodoPage = () => {
   const api = useFetch();
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [ tasks, setTasks ] = useState<Task[]>([]);
+  const [ taskName, setTaskName ] = useState<string>('');
+  const [ selectedTaskId, setSelectedTaskId ] = useState<number | null>(null);
 
   const handleFetchTasks = async () => setTasks(await api.get('/tasks'));
 
   const handleDelete = async (id: number) => {
-    // @todo IMPLEMENT HERE : DELETE THE TASK & REFRESH ALL THE TASKS, DON'T FORGET TO ATTACH THE FUNCTION TO THE APPROPRIATE BUTTON
-  }
+    // done
+    await api.delete(`/tasks/${id}`);
+    await handleFetchTasks();
+  };
 
   const handleSave = async () => {
-    // @todo IMPLEMENT HERE : SAVE THE TASK & REFRESH ALL THE TASKS, DON'T FORGET TO ATTACH THE FUNCTION TO THE APPROPRIATE BUTTON
-  }
+    // done
+    if (selectedTaskId) {
+      await api.patch(`/tasks/${selectedTaskId}`, { name: taskName });
+    } else {
+      await api.post('/tasks', { name: taskName });
+    }
+    await handleFetchTasks();
+    setTaskName('');
+    setSelectedTaskId(null);
+  };
 
   useEffect(() => {
     (async () => {
-      handleFetchTasks();
+      await handleFetchTasks();
     })();
   }, []);
 
@@ -36,13 +50,22 @@ const TodoPage = () => {
       <Box justifyContent="center" mt={5} flexDirection="column">
         {
           tasks.map((task) => (
-            <Box display="flex" justifyContent="center" alignItems="center" mt={2} gap={1} width="100%">
-              <TextField size="small" value={task.name} fullWidth sx={{ maxWidth: 350 }} />
+            <Box key={task.id} display="flex" justifyContent="center" alignItems="center" mt={2} gap={1} width="100%">
+              <TextField
+                size="small"
+                value={selectedTaskId === task.id ? taskName : task.name}
+                onChange={(e) => {
+                  setTaskName(e.target.value);
+                  setSelectedTaskId(task.id);
+                }}
+                fullWidth
+                sx={{ maxWidth: 350 }}
+              />
               <Box>
-                <IconButton color="success" disabled>
+                <IconButton color="success" disabled={selectedTaskId !== task.id || taskName === task.name} onClick={handleSave}>
                   <Check />
                 </IconButton>
-                <IconButton color="error" onClick={() => {}}>
+                <IconButton color="error" onClick={() => handleDelete(task.id)}>
                   <Delete />
                 </IconButton>
               </Box>
@@ -51,11 +74,19 @@ const TodoPage = () => {
         }
 
         <Box display="flex" justifyContent="center" alignItems="center" mt={2}>
-          <Button variant="outlined" onClick={() => {}}>Ajouter une tâche</Button>
+          <TextField
+            size="small"
+            value={taskName}
+            onChange={(e) => setTaskName(e.target.value)}
+            fullWidth
+            sx={{ maxWidth: 350 }}
+            placeholder="Ajouter une nouvelle tâche"
+          />
+          <Button variant="outlined" onClick={handleSave} disabled={!taskName || selectedTaskId !== null}>Ajouter une tâche</Button>
         </Box>
       </Box>
     </Container>
   );
-}
+};
 
 export default TodoPage;
